@@ -1,0 +1,90 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+
+\usepackage[
+backend=biber,
+style=numeric,
+sorting=ynt,
+citestyle=numeric
+]{biblatex}
+\addbibresource{ref.bib}
+
+\title{Software Reliability Proposal}
+\author{Jordan A. Ross \\j25ross@uwaterloo.ca}
+\date{May 27, 2015}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+The research project that I am proposing to do for the software reliability course contains two main components. The first component is to perform a literature review in the area of static analysis techniques for software testing. The focus of this would be the driving theory behind tools like Coverity\textsuperscript{\textregistered} and FindBugs\texttrademark.
+
+The second component of the project would be to implement these techniques to improve Clafer, a lightweight modeling language. The next section provides a high-level overview of Clafer for the purposes of this project. This overview should not be taken to be an exhaustive description of the capabilities of Clafer. The third section will explain in more detail some of the improvements that could be made to help a user writing a Clafer model. Lastly, the conclusion will provide some motivation for why this proposed project will be useful.
+
+\section{Overview of Clafer}
+Clafer is a lightweight modeling language that stands for Class, Feature, Reference \cite{600}. Clafer has many uses and is not limited to any one domain (i.e. automotive, aerospace, etc.). Currently, in the research group that I am apart of (under the supervision of Dr. Krzysztof Czarnecki) we use Clafer to do early design space exploration in the automotive and aerospace domains. 
+
+Clafer has its own semantics for the modeling language \cite{601} to ensure that only valid models are compiled. While Clafer by itself is a nice modeling language, one of the aspects I find most interesting is the backend solvers that support the compiled Clafer model. Currently, a Clafer model can be solved using the Alloy Analyzer and the Choco backend \cite{602, 603}. These backends allow for instance generation based on the Clafer model and multi-objective optimization. While these backends are great for solving, I have found from my experience with Clafer that certain mistakes can be made in a model that are semantically correct but impact solving time.
+
+The next section will provide concrete examples and detail how static analysis techniques could help warn users of this mistakes.
+\section{Applying Static Analysis Techniques to Clafer}
+Examples are used to better show how static analysis techniques can improve a users experience when modeling with Clafer. Consider a simple model of a person with two attributes: age and weight. The following Clafer model describes what a valid instance of a Person would be and gives two concrete Clafers to represent the two people in our example, Joe and Mary.
+
+\begin{lstlisting}[language=Java, breaklines=true]
+abstract Person // An abstract Clafer or "type"
+    age : integer
+    [age >= 0] // Constrain that a persons age has to be positive
+    weight : integer
+    [weight > 0] // Constrain that a persons weight has to be positive
+
+Joe : Person // A concrete Clafer
+    [age = 20]
+    [weight = 160]
+
+Mary : Person
+    [weight = 110]
+\end{lstlisting}
+
+Executing this model will give us many solutions. The reason for this is the age of Mary in the model is only constrained to be a positive number, thus a valid instance can be one where the age of Mary is any positive number. This is obviously not what was intended. This sort of \textit{typo} in a large model could be costly and hard to debug. This is due to the fact that the number of possible variants for a single element in the model has many solutions. With static analysis techniques we could detect possible concrete Clafers (like Joe and Mary) that are missing a constraint (i.e. Mary's age should be 19).
+
+Another example would be when a user is making a model and does not constrain a reference. Consider the following example:
+\begin{lstlisting}[language=Java, breaklines=true]
+abstract Person
+
+abstract Family
+    or Parent
+        mom -> Person
+        dad -> Person
+    child -> Person *
+
+Joe : Person
+Mary : Person
+Bob : Person
+Rocket : Person
+Janet : Person
+
+DoeFamily : Family // 2 parents and 1 child
+	[Parent.mom = Mary]
+	[Parent.dad = Joe]
+	[child = Bob]
+
+DoverFamily : Family // 2 parent and no children
+	[Parent.mom = Rocket]
+	[Parent.dad = Janet]
+\end{lstlisting}
+Finding instances of this model will give 32 instances instead of 1 because the childer Clafer in DoverFamily was left unconstrained. Again, this seems like an easy example that one would catch but as models get bigger, mistakes can be made and hard to catch (or they may never be caught). 
+
+\section{Conclusion}
+As seen in the previous section there are a couple examples that already show that potential use of static analysis techniques being used in testing that could be applied to aid users of Clafer. The main motivation behind selecting this as my course project is that this is a real problem that I have encountered in my use of Clafer as well as others. This would be a great fit for the course project as I am going to spend a considerable amount of time researching how tools such as Coverity\textsuperscript{\textregistered} and FindBugs\texttrademark use static analysis techniques to improve software.
+
+\medskip
+
+\printbibliography
+
+\end{document}
+
+
+
+
