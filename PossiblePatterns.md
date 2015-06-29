@@ -70,3 +70,26 @@ The problem with this example is that PinchDetectionFA is an optional Clafer tha
 ```
 
 **Possible Solution:** For this pattern I would do a pattern match for an optional Clafer that has nested Clafers that are being constrained. If this pattern exists I would throw a warning for possibility losing variability in the model.
+
+###Pattern 4###
+**Name:** Incorrect use of "=", should use "in"
+
+**Example:**
+```clafer
+abstract FunctionalAnalysisComponent
+  deployedTo -> DeviceNode
+    [parent in this.deployedFrom]
+
+abstract DeviceNode
+  deployedFrom -> FunctionalAnalysisComponent *
+    [this.deployedTo = parent]
+
+function1 : FunctionalAnalysisComponent
+  [deployedTo = (device1, device2)]
+
+device1 : DeviceNode
+device2 : DeviceNode
+```
+This example is incorrect because we should be using `[deployedTo in (device1, device2)]`. This is problem is a hassle for users when they can't find why they are getting 0 instances and an even bigger problem when the model generates spurious instances for different forms of this problem.
+
+**Possible Solution:** For this pattern I would do a pattern match on `<Singleton Set (or optional)> = <Non-singleton Set>`. If this pattern exists I would throw a warning for incorrect use of "=" with a singleton set and a non-singleton set.

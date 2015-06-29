@@ -1,5 +1,17 @@
 *.class
 
+# Latex file
+*.log
+*.blg
+*.bbl
+*.aux
+*.bcf
+*.fdb_latexmk
+*.fls
+*.run*
+*.synctex*
+*.pdf
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
