@@ -74,10 +74,13 @@ public class IncorrectMembershipTestExprAnalyzer implements AstExprVisitor<Incor
         //  the right expression is a union of multiple clafer
         boolean rightIsSet = ast.getRight().accept(this, h);
         if (leftClafer != null) {
-            if ((leftClafer.getGroupCard().getLow() <= 1) && rightIsSet) {
-                // We have an error
-                System.out.println("Warning: Possible incorrect use of '=' (consider using 'in') in expression " + ast.toString() + " in " +
-                        "the constraint: " + h.constraint.toString());
+            if (leftClafer.getClass() == AstConcreteClafer.class) {
+                AstConcreteClafer concLeftClafer = (AstConcreteClafer) leftClafer;
+                if ((concLeftClafer.getCard().getLow() <= 1) && rightIsSet) {
+                    // We have an error
+                    System.out.println("Warning: Possible incorrect use of '=' (consider using 'in') in expression " + ast.toString() + " in " +
+                            "the constraint: " + h.constraint.toString());
+                }
             }
         }
 

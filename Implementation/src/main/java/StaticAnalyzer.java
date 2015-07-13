@@ -36,7 +36,7 @@ public class StaticAnalyzer {
                 // Skip the root
                 continue;
             }
-            if (!curAbstract.hasSuperClafer() || curAbstract.getSuperClafer().getName().equals("#clafer")) {
+            if (!curAbstract.hasSuperClafer() || curAbstract.getSuperClafer().getName().equals("#clafer#")) {
                 // This abstract has a super clafer so we should use get its list of unconstrained concrete clafers.
                 List<AstConcreteClafer> tmpList = new ArrayList<>();
                 List<AstConcreteClafer> tmpConcretes = findUnconstrainedRefClafersOfAbstract(curAbstract, tmpList);
@@ -75,15 +75,17 @@ public class StaticAnalyzer {
                     // For each unconstrained Clafer we want to analyze each of the concrete sub types to see if they
                     // constrain the Clafer
                     for (AstConcreteClafer concreteSubClafer : concreteSubClaferList) {
-                        String allConstraint = "";
-                        for (AstConstraint constraint : concreteSubClafer.getConstraints()) {
-                            //TODO: Fix this... We are naively doing string compare for now.
-                            allConstraint = allConstraint.concat(constraint.toString());
-                        }
-                        if (allConstraint.contains(unconstrainedClafer.getName())) {
-                            log.incSuccess();
-                        } else {
-                            log.logError(concreteSubClafer);
+                        if (concreteSubClafer.getSuperClafer().equals(abstractClafer)) {
+                            String allConstraint = "";
+                            for (AstConstraint constraint : concreteSubClafer.getConstraints()) {
+                                //TODO: Fix this... We are naively doing string compare for now.
+                                allConstraint = allConstraint.concat(constraint.toString());
+                            }
+                            if (allConstraint.contains(unconstrainedClafer.getName())) {
+                                log.incSuccess();
+                            } else {
+                                log.logError(concreteSubClafer);
+                            }
                         }
                     }
 
@@ -97,62 +99,68 @@ public class StaticAnalyzer {
 
     public void analyzeMissingRefInSetTestConstraint() {
         List<AstConstraint> constraintList = AstUtil.getNestedConstraints(this.model);
-        // Get all AstSetTest expressions
-        List<Pair<AstSetTest, AstConstraint>> setExpressionConstraintList = new ArrayList<>();
+        MissingRefExprAnalyzer analyzer = new MissingRefExprAnalyzer(this.model);
         for (AstConstraint constraint : constraintList) {
-            AstExpr expression = constraint.getExpr();
-            if (expression instanceof AstSetTest) {
-                setExpressionConstraintList.add(new Pair<>((AstSetTest) expression, constraint));
-            } else if (expression instanceof AstBoolArithm) {
-                AstBoolExpr[] operands = ((AstBoolArithm) expression).getOperands();
-                for (AstBoolExpr operand : operands) {
-                    if (operand instanceof AstSetTest) { //TODO: This does not seem robust..
-                        setExpressionConstraintList.add(new Pair<>((AstSetTest) operand, constraint));
-                    }
-                }
-            }
+            MissingRefHelper helper = new MissingRefHelper(constraint);
+            constraint.getExpr().accept(analyzer, helper);
         }
-
-        // Now that we have all the AstSetTest expressions we want to check if the left and right expressions have
-        // Clafers with references and have the .ref
-        for (Pair<AstSetTest, AstConstraint> setExpressionConstraint : setExpressionConstraintList) {
-            AstSetTest expr = setExpressionConstraint.getFst();
-            AstConstraint constraint = setExpressionConstraint.getSnd();
-            AstSetExpr left = expr.getLeft();
-            AstSetExpr right = expr.getRight();
-//            System.out.println("Getting left Clafer of " + left.toString() + " ...");
-            AstClafer leftClafer = getClaferFromExpression(left, setExpressionConstraint.getSnd().getContext());
-//            System.out.println("Getting right Clafer of " + right.toString() + " ...");
-            AstClafer rightClafer = getClaferFromExpression(right, setExpressionConstraint.getSnd().getContext());
-            if (leftClafer != null && rightClafer != null) {
-                if (leftClafer.hasRef() && rightClafer.hasRef()) {
-                    if (!exprHasRef(left)) {
-                        System.out.println("Missing .ref in " + left.toString() + " in constraint: " +
-                                constraint.toString() + " in the context of " + constraint.getContext().toString());
-                    }
-                    if (!exprHasRef(right)) {
-                        System.out.println("Missing .ref in " + right.toString() + " in constraint: " +
-                                constraint.toString() + " in the context of " + constraint.getContext().toString());
-                    }
-                }
-            }
-        }
+//        List<AstConstraint> constraintList = AstUtil.getNestedConstraints(this.model);
+//        // Get all AstSetTest expressions
+//        List<Pair<AstSetTest, AstConstraint>> setExpressionConstraintList = new ArrayList<>();
+//        for (AstConstraint constraint : constraintList) {
+//            AstExpr expression = constraint.getExpr();
+//            if (expression instanceof AstSetTest) {
+//                setExpressionConstraintList.add(new Pair<>((AstSetTest) expression, constraint));
+//            } else if (expression instanceof AstBoolArithm) {
+//                AstBoolExpr[] operands = ((AstBoolArithm) expression).getOperands();
+//                for (AstBoolExpr operand : operands) {
+//                    if (operand instanceof AstSetTest) { //TODO: This does not seem robust..
+//                        setExpressionConstraintList.add(new Pair<>((AstSetTest) operand, constraint));
+//                    }
+//                }
+//            }
+//        }
+//
+//        // Now that we have all the AstSetTest expressions we want to check if the left and right expressions have
+//        // Clafers with references and have the .ref
+//        for (Pair<AstSetTest, AstConstraint> setExpressionConstraint : setExpressionConstraintList) {
+//            AstSetTest expr = setExpressionConstraint.getFst();
+//            AstConstraint constraint = setExpressionConstraint.getSnd();
+//            AstSetExpr left = expr.getLeft();
+//            AstSetExpr right = expr.getRight();
+////            System.out.println("Getting left Clafer of " + left.toString() + " ...");
+//            AstClafer leftClafer = getClaferFromExpression(left, setExpressionConstraint.getSnd().getContext());
+////            System.out.println("Getting right Clafer of " + right.toString() + " ...");
+//            AstClafer rightClafer = getClaferFromExpression(right, setExpressionConstraint.getSnd().getContext());
+//            if (leftClafer != null && rightClafer != null) {
+//                if (leftClafer.hasRef() && rightClafer.hasRef()) {
+//                    if (!exprHasRef(left)) {
+//                        System.out.println("Missing .ref in " + left.toString() + " in constraint: " +
+//                                constraint.toString() + " in the context of " + constraint.getContext().toString());
+//                    }
+//                    if (!exprHasRef(right)) {
+//                        System.out.println("Missing .ref in " + right.toString() + " in constraint: " +
+//                                constraint.toString() + " in the context of " + constraint.getContext().toString());
+//                    }
+//                }
+//            }
+//        }
     }
 
     public void analyzeMissingImpliesOnOptionalClafer() {
         List<AstConstraint> constraintList = AstUtil.getNestedConstraints(this.model);
+        MissingImpliesExprAnalyzer analyzer = new MissingImpliesExprAnalyzer(this.model);
         for (AstConstraint constraint : constraintList) {
             MissingImpliesHelper helper = new MissingImpliesHelper(constraint);
-            MissingImpliesExprAnalyzer analyzer = new MissingImpliesExprAnalyzer(this.model);
             constraint.getExpr().accept(analyzer, helper);
         }
     }
 
     public void analyzeIncorrectMembershipTest() {
         List<AstConstraint> constraintList = AstUtil.getNestedConstraints(this.model);
+        IncorrectMembershipTestExprAnalyzer analyzer = new IncorrectMembershipTestExprAnalyzer(this.model);
         for (AstConstraint constraint : constraintList) {
             IncorrectMembershipTestHelper helper = new IncorrectMembershipTestHelper(constraint);
-            IncorrectMembershipTestExprAnalyzer analyzer = new IncorrectMembershipTestExprAnalyzer(this.model);
             constraint.getExpr().accept(analyzer, helper);
         }
     }
@@ -182,62 +190,5 @@ public class StaticAnalyzer {
         }
 
         return S;
-    }
-
-    private boolean exprHasRef(AstSetExpr expr) {
-        String[] splitArray = expr.toString().split("\\s\\.\\s");
-        return splitArray[splitArray.length-1].equals("ref");
-    }
-
-    private AstClafer getClaferFromExpression(AstSetExpr expr, AstClafer context) {
-        // Get the array of Clafer names in order of top to lowest level clafer.
-        String[] claferNames = expr.toString().split("\\s\\.\\s");
-        List<AstClafer> claferList = new ArrayList<>();
-        int index = 0;
-        for (String claferName : claferNames) {
-            if (claferName.equals("ref")) {
-                // Skip ".ref" but increment
-                index++;
-                continue;
-            }
-            if (claferName.equals("this")) {
-                if (index+1 < claferNames.length) {
-                    if (claferNames[index+1].equals("ref")) {
-                        // If we are getting the reference of the context then retrieve it
-                        claferList.add(context.getRef().getTargetType());
-                    } else {
-                        // Replace "this" with the context
-                        claferList.add(context);
-                    }
-                } else {
-                    // Replace "this" with the context
-                    claferList.add(context);
-                }
-            } else {
-                AstClafer clafer;
-                if (claferList.size() > 0) {
-                    clafer = Utils.getClaferFromName(claferName, claferList.get(claferList.size() - 1),
-                            this.model);
-                } else {
-                    clafer = Utils.getClaferFromName(claferName, null, this.model);
-                }
-                if (index+1 < claferNames.length && clafer != null) {
-                    if (claferNames[index+1].equals("ref")) {
-                        // If we are getting the reference of the clafer then retrieve it
-                        if (clafer.getRef() != null) {
-                            claferList.add(clafer.getRef().getTargetType());
-                        }
-                    } else {
-                        // If we are not getting the reference then just add it
-                        claferList.add(clafer);
-                    }
-                } else {
-                    // If this is the last clafer then just add it
-                    claferList.add(clafer);
-                }
-            }
-            index++;
-        }
-        return  claferList.get(claferList.size()-1);
     }
 }
