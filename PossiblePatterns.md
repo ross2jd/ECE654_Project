@@ -65,6 +65,7 @@ This is a serious problem as well because again the model will compile correctly
 [fa.PinchDetectionFA.PositionSensor.deployedTo.ref = ht.dn.Motor]
 ```
 The problem with this example is that PinchDetectionFA is an optional Clafer that is constrained by some other Clafer in the model. Now what is trying to be modeled is that a constraint needs to be applied to the nested PositionSensor ***if*** the PinchDetectionFA is present in the instance. Sometimes the solver will not be smart enough to handle this case so we should put an implies constraint to be more explicit as follows:
+
 ```clafer
 [fa.PinchDetectionFA => (fa.PinchDetectionFA.PositionSensor.deployedTo.ref = ht.dn.Motor)]
 ```

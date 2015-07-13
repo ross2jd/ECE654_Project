@@ -3,6 +3,9 @@
 \usepackage{listings}
 \usepackage{courier}
 \usepackage{color,soul}
+\usepackage{algpseudocode}
+\usepackage[ruled]{algorithm}
+\usepackage{amssymb}
 
 \usepackage[
 backend=biber,
@@ -272,6 +275,93 @@ Much like the previous two, this pattern would use the AST to find the correspon
 
 \section{Implementation}
 \label{sec:implementation}
+In this section the implementation of the patterns described in the previous section is described. For each pattern the algorithm is given for how the pattern was analyzed. Along with the algorithm, each pattern describes how warnings are issued to the user (i.e. if any statistical analysis or filtering is applied to the raw errors).
+
+% We should talk about how we make use of the clafer choco AST
+\subsection{Pattern 1}
+Recall that pattern 1 was to find instances in the model where a modeler may have mistakenly forgetten to constrain a \textit{Clafer} from its super \textit{Clafer}. The algorithm for this pattern is given in Algorithm~\ref{alg:pattern1}.
+
+\begin{algorithm}[H]
+\caption{Unconstrained Sub Clafers}\label{alg:pattern1}
+\begin{algorithmic}[1]
+\Procedure{analyzeUnconstrainedRefClafers}{}
+  \State \textbf{let} $X$ be an order set of abstract Clafers, sub before super Clafers
+  \ForAll{$X_i \in Reverse(X)$}\Comment{Loop through $X$ in reverse order}
+    \If{$X_i$ has a super Clafer $X_j$}
+      \State $X_i.set \gets$ \Call{findUnconstrainedRefClafersOfAbstract}{$X_i$, $X_j.set$}
+    \Else
+      \State $X_i.set \gets$ \Call{findUnconstrainedRefClafersOfAbstract}{$X_i$, $\emptyset$}
+    \EndIf
+  \EndFor
+  \ForAll{$X_i \in X$}
+    \State \textbf{let} $Z$ be the set of concrete Clafers that inherit from $X_i$
+    \ForAll{$s \in X_i.set$}
+      \ForAll{$Z_i \in Z$}
+        \If{$\exists constraint(s) \in Z_i$}
+          \State Log success
+        \Else
+          \State Log error
+        \EndIf
+      \EndFor
+      \State Analyze warnings for $X_i$
+    \EndFor
+  \EndFor
+\EndProcedure
+\Procedure{findUnconstrainedRefClafersOfAbstract}{$a,S$}\Comment{The unconstrained Clafers of a given a propogated set of unconstrained Clafers S}
+   \ForAll{$s \in S$}
+    \If{$\exists constraint(s) \in a$}
+      \State $S \gets S \setminus \{s\}$
+    \EndIf
+   \EndFor
+   \ForAll{$child \in childrenWithRef(a)$}
+    \If{$\nexists constraint(child) \in a$}
+      \State $S \gets S \cup \{child\}$
+    \EndIf
+   \EndFor
+   \State \Return $S$
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+The algorithm will analyze each of the abstract \textit{Clafers} first so that that if another abstract Clafer inherits from another and constrains its super \textit{Clafers} a false positive is not thrown. The algorithm does not show how any statistical analysis that is done on the warnings log for each abstract \textit{Clafer}. In order to reduce false positives some analysis needs to be done on the logged warning messages. Algorithm~\ref{alg:pattern1Stats} describes the process of how an warning is generated based on some simple analysis.
+
+\begin{algorithm}[H]
+\caption{Analysis Procedure on Warnings for Unconstrained Reference Clafers}\label{alg:pattern1Stats}
+\begin{algorithmic}[1]
+\Procedure{warningAnalysis}{X}
+  \State \textbf{let} $a$ be the context abstract Clafer
+  \State \textbf{let} $V$ be the set of concrete Clafers that have an error logged.
+  \State $successCnt \gets $ total successes for $a$
+  \State $errorCnt \gets $ total errors for $a$
+  \If{$successCnt != 0$}
+    \State Generate warnings $\forall v \in V$
+  \EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+In the analysis we don't thow any warnings if there are no successes since its obvious the user didn't want to constrain the Clafer. More sophisticated statistical analysis is not used since the model would like to know if there are any unconstrained reference Clafers. It should be up to the modeler to determine if it was they inteded or not. In future interations of this tool it would be good if the modeler could mark warnings as intended so they are not shown up on future executions of the tool. This reasoning is valid in the context of modeling as models are not nearly as large as the industrial size code bases so a modeler could more easily traverse through the warnings to determine what was intended or not.
+
+\subsection{Pattern 2}
+In pattern 2 the goal is to notify the modler when they may be missing the ``.ref" on  \textit{Clafers} inside of the a constraint. Algorithm~\ref{alg:pattern2} describes how the analysis is carried out.
+
+\begin{algorithm}[H]
+\caption{Finding missing ``.ref" of Clafer in Constraints}\label{alg:pattern2}
+\begin{algorithmic}[1]
+\Procedure{findingMissingRefOfClafers}{}
+  \State \textbf{let} $C$ be the set of constraints with equality
+  \ForAll{$c \in C$}
+    \State $left \gets c.getLeftOfEqual()$
+    \State $right \gets c.getRightOfEqual()$
+    \If{$left.hasRef() \&\& right.hasRef()$}
+      \If{$left || right$ does not a trailing $.ref$}
+        \State log error
+      \EndIf
+    \EndIf
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
 
 \section{Results \& Discussion}
 

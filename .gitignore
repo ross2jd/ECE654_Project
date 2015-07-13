@@ -12,6 +12,12 @@
 *.synctex*
 *.pdf
 
+# Clafer compiled files
+*.als
+*.des.cfr
+*.html
+*.js
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
