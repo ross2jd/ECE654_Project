@@ -1,11 +1,19 @@
 \documentclass[10pt,oneside]{IEEEtran}
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage{listings}
 \usepackage{courier}
 \usepackage{color,soul}
 \usepackage{algpseudocode}
 \usepackage[ruled]{algorithm}
 \usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{multirow}
+
+%Path in Unix-like (Linux, OsX) format
+\graphicspath{ {images/} }
 
 \usepackage[
 backend=biber,
@@ -17,9 +25,9 @@ citestyle=numeric
 
 
 
-\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true}
+\lstset{basicstyle=\footnotesize\ttfamily,breaklines=true,numbersep=1em,xleftmargin=2em,xrightmargin=2em}
 
-\title{Software Reliability Report}
+\title{Applying Static Analysis Techniques to Aid Clafer Modelers}
 \author{Jordan A. Ross \\j25ross@uwaterloo.ca}
 \date{July 3rd, 2015}
 
@@ -31,9 +39,9 @@ citestyle=numeric
 \section{Introduction}
 In this paper we provide an overview for the software reliability course project in which static analysis
 is incorporated in the Clafer tool chain to aid users in modeling. Static analysis has become a popular
-tool in recent years for finding bugs and discouraging bad programming practices (\hl{Reference needed}).
+tool in recent years for finding bugs and discouraging bad programming practices \cite{8}.
 The attractiveness of static analysis is that recent research has shown the effectiveness of tools
-such as FindBugs which aim to catch simple programming errors (\hl{Reference needed}). At the same time, FindBugs
+such as FindBugs which aim to catch simple programming errors \cite{6}. At the same time, FindBugs
 and other tools such as Coverity also has sophisticated analysis to catch more serious errors in programs.
 
 This project and paper aims to first understand the difference between tools such as FindBugs and Coverity
@@ -41,6 +49,8 @@ and in which aspects they excel. Secondly, I attempt to apply these static analy
 lightweight modeling language. The goal is to show that these techniques can be applied to modeling languages
 to aid users that may make simple mistakes as they learn or help more experienced users from committing serious
 errors.
+
+Applying static analysis techniques is important to Clafer in order to aid users in finding possible errors in there model that the compiler does not catch. Clafer, like a traditional programming language such as C++ or Java has underlying semantics. Howerver there are cases in which semanticaly the model is correct but not what was intended by the modeler. The consquences of such errors in C++ or Java is a possible run-time exception whereas in Clafer it may lead to generation of a suboptimal or infeasible solution.
 
 The paper is structured as follows: it begins with an overview of the Clafer lanaguage and its current use
 cases. Section 3 then gives an overview and a comparision of existing static analysis techniques with a focus
@@ -53,13 +63,13 @@ various models and discussion. The paper is then concluded in Section 7.
 Clafer (\underline{cla}ss, \underline{fe}ature, \underline{r}eference) is a lightweight modeling language.
 The original driving force behind the development of Clafer was feature modeling and product-line modeling.
 Now, Clafer is used to model a wide range of doamins as it is not a domain specific language like EAST-ADL
-or AADL (\hl{Reference needed}). The language of Clafer has minimialistic syntax and has the support of
-formal semantics (\hl{Reference needed}).
+or AADL. The language of Clafer has minimialistic syntax and has the support of
+formal semantics \cite{9}.
 % Maybe explain how it builds on Alloy?
 
 One of the key features of Clafer is the rich support for modeling variability. The following subsections
 will use examples to help describe some of the Clafer constructs that are of importance in this paper.
-For a more formal semantic defintion of the language and complete overview, see  (\hl{Reference needed}).
+For a more formal semantic defintion of the language and complete overview, see \cite{10}.
 Throughout this paper the running example of a automotive architecture will be used.
 
 \subsection{Concrete and Abstract}
@@ -73,8 +83,14 @@ context of a software component.
 
 \begin{lstlisting}[label={lst:concreteAbstract},caption={Example of abstract and concrete \textit{Clafers}}]
 abstract SoftwareComponent
+  xor language
+    Java
+    Python
+    Ruby
 mainComponent
 \end{lstlisting}
+
+The above listing also shows that concrete \textit{Clafers} can be nested under and abstract \textit{Clafer} (They can also be nested under concrete ones). The \lstinline$xor lanaguage$ is a group cardinality constraint that says that the language is either Java, Python, or Ruby exclusively.
 
 \subsection{Inheritance}
 Similiar to that of UML, Clafer provides first class support for inheritance. In the previous
@@ -83,12 +99,27 @@ example we had a \lstinline$mainComponent$ which should be a software component.
 
 \begin{lstlisting}[label={lst:inheritanceEx},caption={Inheritance example}]
 abstract SoftwareComponent
+  xor language
+    Java
+    Python
+    Ruby
 mainComponent : SoftwareComponent
 \end{lstlisting}
 
+When we inherit from an abstract \textit{Clafer} all children of the abstract are then apart of the concrete \textit{Clafer} as well. For example, a valid instance given the model in Listing \ref{lst:inheritanceEx} would be as follows:
+\begin{verbatim}
+=== Instance 1 Begin ===
+
+mainComponent
+  language
+    Ruby
+
+--- Instance 1 End ---
+\end{verbatim}
+
 \subsection{Cardinality}
 Clafer also has support for expressing cardinality of \textit{Clafers} which is similiar to
-that of UML. Continuing the simple example, a new type \lstinline$Function$ can be introduced
+that of adding multiplicies in UML. Continuing the simple example, a new type \lstinline$Function$ can be introduced
 and \textit{nested} under \lstinline$mainComponent$. Furthermore, a cardinality can be given to
 \lstinline$function$ to express that there are 1 or more functions in the main component.
 Listing~\ref{lst:cardinalityExample} shows the example expressing this.
@@ -103,14 +134,7 @@ mainComponent : SoftwareComponent
 
 \subsection{References}
 References are a key feature to Clafer as they allow modelers to express relationships between
-\textit{Clafers} that may not necessarily be nested. References are also overloaded to allow
-for using integers in the language. In the previous section, cardinality and nesting were introduced
-but the example is maybe not the best representation of a software component. For example, a modeler
-may want every \lstinline$SoftwareComponent$ to be composed of 1 or more functions. Then in an instance
-of \lstinline$mainComponent$ the modeler might want to specify which functions are in the main component.
-This is done through the user of references and Listing~\ref{lst:referenceExample} shows how this would
-be done in Clafer. In this listing a constraint is used which is explained in more detail in the following
-section.
+\textit{Clafers} that may not be an ownership relationship. When you have a have nesting and a colon is used then it signfies that the parent owns the child (it instantiates the \textit{Clafer}). A reference however only means that the parent \textit{Clafer} owns a \textit{reference} to another \textit{Clafer}. References are also overloaded to allow for using integers in the language. In the previous section, cardinality and nesting were introduced but the example is maybe not the best representation of a software component. For example, a modeler may want every \lstinline$SoftwareComponent$ to be composed of 1 or more functions. Then in an instance of \lstinline$mainComponent$ the modeler might want to specify which functions are in the main component. This is done through the user of references and Listing~\ref{lst:referenceExample} shows how this would be done in Clafer. In this listing a constraint is used which is explained in more detail in the following section.
 
 \begin{lstlisting}[label={lst:referenceExample},caption={Example use of references}]
 abstract Function
@@ -128,23 +152,29 @@ Constraints come in different forms and are used throughout the language even th
 unaware. For example, when a \textit{Clafer} is nested under another a constraint is imposed that every
 instance of the parent \textit{Clafer} must have the child present. In the previous section, an explicit
 constraint was used to assign what functions belonged to \lstinline$mainComponent$. Constraints can
-take many forms and the reader should see (\hl{Reference needed}) for a full list of constraints
+take many forms and the reader should see \cite{1} for a full list of constraints
 supported by the language.
 \subsection{Backend Tool Support}
 Clafer alone requires no tool support and much like UML can be written down on just pen and paper.
 However, the tool support for Clafer allows a user to give a model written in Clafer and to generate
 all valid instances of the model. Currently the Clafer tool chain supports two backends, Alloy 4.1
-(\hl{Reference needed}) and Choco CSP (\hl{Reference needed}). The Choco backend also allows for
-multi-objective optimization (\hl{Reference needed}).
+\cite{4} and Choco CSP \cite{3}. The Choco backend also allows for
+multi-objective optimization. Figure~\ref{fig:claferToolChain} shows how the Clafer file is taken in in a \textit{.cfr} format and compiled into Alloy and Choco format (or both). Then using the dedicated instance generator the set of valid instances is generated in plain text format.
+\begin{figure}[h]
+  \label{fig:claferToolChain}
+  \caption{Block diagram showing the Clafer tool chain work flow}
+  \centering
+  \includegraphics[width=0.5\textwidth]{ClaferToolChainWorkFlow}
+\end{figure}
 
 \section{Static Analysis Techniques}
 In this section of the report an overview of some of the state of the art static analysis techniques
 are examined. Static analysis has been used heavily in programming over the years, one of the most
 common analysis was the analysis of types in a program and ensuring that a program can be typed checked.
 A program being type checked (or saying that a program is typeable) gives a guarentee that the program
-will behave properly at runtime (\hl{Reference to FJ needed}).
+will behave properly at runtime \cite{2}.
 
-In the past decade or so though a lot offocus and work has been done in trying to detect the presence of bugs that traditional type system may not catch (\hl{Reference needed}). This work has led to at least two successful and popular tools in industry, namely FindBugs and Coverity. Both tools are static analysis tools that perform some static analysis that does not necesarily provide a guarentee that the program will behave properly at runtime, but rather probable bugs that the developer(s) may have made. The following two subsections describe two of the prevelant techniques used in both Coverity and FindBugs and why they are effective. The last subsection describes both tools in more detail and comparison between the two.
+In the past decade or so though a lot offocus and work has been done in trying to detect the presence of bugs that traditional type system may not catch \cite{8}. This work has led to at least two successful and popular tools in industry, namely FindBugs and Coverity. Both tools are static analysis tools that perform some static analysis that does not necesarily provide a guarentee that the program will behave properly at runtime, but rather probable bugs that the developer(s) may have made. The following two subsections describe two of the prevelant techniques used in both Coverity and FindBugs and why they are effective. The last subsection describes both tools in more detail and comparison between the two.
 
 %TODO: I am thinking that we should combine the specification sections and then have a section on the static analysis techniques such as dataflow analysis and controlflow.
 \subsection{Specific Specifications}
@@ -172,6 +202,8 @@ A MUST belief only requires a single contradiction (i.e. the pattern must be pre
 MAY beliefs are the case when it is suggested that an observed pattern was programmers intent where in fact it may be a coincidence \cite{7}. A concrete example of this would be that two methods must be called together, like \textit{``a" must be followed by a call to ``b"}. In \cite{7} the approach is to treat all MAY beliefs as MUST beliefs, thus record an error everything this belief is violated, then using statistical analysis the number of false positives (coincidences) are reduced.
 
 The analysis performed in \cite{7} is different than that of MC in the fact that a template based approach is used to mine MAY beliefs. For example, we may not know what ``a" or ``b" is in the pattern but we want to observe they are called in the same order, or if they are simply called together.
+
+\subsection{Dataflow Analysis and Abstract Syntax Tree Traversal}
 % Key points to hit:
 % May beliefs.
 % Dataflow analysis
@@ -187,7 +219,7 @@ The analysis performed in \cite{7} is different than that of MC in the fact that
 
 \section{Static Analysis of Clafer}
 % This section should come directly from the possible patterns markdown document.
-In this section we present how static analysis could be incorporated into the Clafer tool chain and possible patterns to highlight the motivation for doing so. Since Clafer is a constraint based modeling language, there is no need for dataflow analysis. Instead, the abstract syntax tree (AST) can be traversed to look for the specified patterns. In the following four subsections each pattern is described with an example and some motivation for why the pattern is important to detect. %The last subsection describes what static analyis technique will be needed in order to warn users about these pattern violations.
+In this section we present how static analysis could be incorporated into the Clafer tool chain and possible patterns to highlight the motivation for doing so. Since Clafer is a constraint based modeling language, there is no need for dataflow analysis. Instead, the abstract syntax tree (AST) can be traversed to look for the specified patterns. In the following four subsections each pattern is described with an example and some motivation for why the pattern is important to detect. We leave the details of how the patterns and analysis techniques are carried out to the next section.%The last subsection describes what static analyis technique will be needed in order to warn users about these pattern violations.
 %TODO: Should we have a section about what static analysis techniques we are going to use?
 
 \subsection{Pattern 1: Missing Constraint from Inherited Clafer}
@@ -220,7 +252,7 @@ In order to catch this error the AST would need to be traversed for each concret
 
 \subsection{Pattern 2: Missing ``.ref" of Clafer}
 The second pattern deals with references between two \textit{Clafers}. In C++, to get the value of a reference you must dereference the pointer. Much like C++, in \textit{Clafer} in order to get the \textit{Clafer} that a reference is pointing to a ``.ref" must be used. One of the limitations of the Clafer type system is that there are cases where a constraint will type check but in fact it is not constraing what the user intended. The example in Listing~\ref{lst:pattern2Ex} shows a possible scenario where this could happen.
-\begin{lstlisting}[label={lst:pattern2Ex},caption={Example of Pattern 2},numbers=left]
+\begin{lstlisting}[label={lst:pattern2Ex},caption={Example of Pattern 2},numbers=right]
 abstract DeviceNode
 abstract FunctionalAnalysisComponent
     deployedTo -> DeviceNode
@@ -253,7 +285,7 @@ In order to catch this mistake a similiar approach to the Pattern 2 will be take
 
 \subsection{Pattern 4: Incorrect use of ``=", should use ``in"}
 The last pattern that is examined is one that will help aid users who are unfamiliar with the semantics of Clafer, more specificatly with the operators ``=" and ``in". Listing~\ref{lst:pattern4Ex} highlights a scenario that a user may make.
-\begin{lstlisting}[label={lst:pattern4Ex},caption={Example of Pattern 4},numbers=left]
+\begin{lstlisting}[label={lst:pattern4Ex},caption={Example of Pattern 4},numbers=right]
 abstract FunctionalAnalysisComponent
   deployedTo -> DeviceNode
     [parent in this.deployedFrom]
@@ -275,10 +307,19 @@ Much like the previous two, this pattern would use the AST to find the correspon
 
 \section{Implementation}
 \label{sec:implementation}
-In this section the implementation of the patterns described in the previous section is described. For each pattern the algorithm is given for how the pattern was analyzed. Along with the algorithm, each pattern describes how warnings are issued to the user (i.e. if any statistical analysis or filtering is applied to the raw errors).
+In this section the implementation of the patterns described in the previous section is described. For each pattern the algorithm is given for how the pattern was analyzed. Along with the algorithm, each pattern describes how warnings are issued to the user (i.e. if any statistical analysis or filtering is applied to the raw errors). Before the patterns are described in detail, some background information is given on where this implementation fits into the existing Clafer tool chain backends.
 
-% We should talk about how we make use of the clafer choco AST
-\subsection{Pattern 1}
+\subsection{Overiew and Design}
+The Choco backend is Clafer's most developed backend and allows for the most functionality by having multi-objective optimization. Therefore for the scope of the course project it was chosen to plug the analysis into the Choco backend. This was also driven by the fact of the authors lack of experience in writing Haskell opposed to Java.
+
+As seen earlier in Figure~\ref{fig:claferToolChain} the original Clafer file (in .cfr format) is Compiled and an intermediate representation of the model is outputed to a Javascript file. The Choco backend then takes the Javascript model and builds an AST and uses the AST representation to perform the solving. Since there was exisiting Java code to build the AST from the Javascript file and perfrom traversals, this implementation makes heavy use of the exisiting code base found in the \href{https://github.com/gsdlab/chocosolver/}{Choco Github repository}.
+
+For the initial implementation of the tool it was decided to not optimize for scalability as most models were fairly small (< 200 Clafers) as opposoed to millions of lines of code that Coverity and FindBugs need to analyze. Thus each pattern carried out its analysis seperately. In future work the code will be optimized so that the number of AST traversals can be reduced.
+
+Lastly, for patterns 2 through 4 the main AST traversal was to retrieve the set of all constraints in the model. Once the constraints were collected they were analyzed using a visitor design pattern in order to parse the many different types of expressions that a constraint can contain. For pattern 1, the traversal of the AST was more complex and is captured in the psuedocode given in the following subsection.
+%TODO: Should we include a partial class diagram?
+
+\subsection{Pattern 1 Implementation}
 Recall that pattern 1 was to find instances in the model where a modeler may have mistakenly forgetten to constrain a \textit{Clafer} from its super \textit{Clafer}. The algorithm for this pattern is given in Algorithm~\ref{alg:pattern1}.
 
 \begin{algorithm}[H]
@@ -342,8 +383,8 @@ The algorithm will analyze each of the abstract \textit{Clafers} first so that t
 
 In the analysis we don't thow any warnings if there are no successes since its obvious the user didn't want to constrain the Clafer. More sophisticated statistical analysis is not used since the model would like to know if there are any unconstrained reference Clafers. It should be up to the modeler to determine if it was they inteded or not. In future interations of this tool it would be good if the modeler could mark warnings as intended so they are not shown up on future executions of the tool. This reasoning is valid in the context of modeling as models are not nearly as large as the industrial size code bases so a modeler could more easily traverse through the warnings to determine what was intended or not.
 
-\subsection{Pattern 2}
-In pattern 2 the goal is to notify the modler when they may be missing the ``.ref" on  \textit{Clafers} inside of the a constraint. Algorithm~\ref{alg:pattern2} describes how the analysis is carried out.
+\subsection{Pattern 2 Implementation}
+In pattern 2 the goal is to notify the modeler when they may be missing the ``.ref" on  \textit{Clafers} inside of the a constraint. Unlike in pattern 1 there is no need to do a complext AST traversal over the abtract and concrete \textit{Clafers}. Instead what is needed is the entire set of constraints that involve a ``set test". A set test is when equality (=) is assereted between two sets of Clafers. In this case, the sets are single valued sets. Algorithm~\ref{alg:pattern2} descirbes the high level approach to detecting this pattern. However, as meantion earlier, the implementation was carried out by creating a concrete vistor to an existing abstract visitor. In our concrete visitor the expression is parsed until a matching set test expression is found and analyzed.
 
 \begin{algorithm}[H]
 \caption{Finding missing ``.ref" of Clafer in Constraints}\label{alg:pattern2}
@@ -363,7 +404,100 @@ In pattern 2 the goal is to notify the modler when they may be missing the ``.re
 \end{algorithmic}
 \end{algorithm}
 
+\subsection{Pattern 3 Implementation}
+Pattern 3 was implemented in a very similiar way to pattern 2 in terms of using the visitor design pattern. For this pattern its helpful to see how the constraint is desugared for the compiler. Consider the following constraint from earlier:
+\begin{lstlisting}[]
+[fa.PinchDetectionFA => fa.PinchDetectionFA.PositionSensor.deployedTo.ref = ht.dn.Motor]
+\end{lstlisting}
+The constraint would be desugraded as follows:
+\begin{lstlisting}[]
+[(#fa.PinchDetectionFA >= 1) => (fa.PinchDetectionFA.PositionSensor.deployedTo.ref = ht.dn.Motor)]
+\end{lstlisting}
+The ``\#" sign means ``count the number of X". Thus in this constraint we want to make sure we have at least 1 \textit{PinchDetectionFA} in order to have the set test expression on the right of the implies. The above constraint is a correct constraint in terms of pattern 3, thus what is needed to throw an error is to have set test expression where either the left side of the equals is possibly optional. If a Clafer is optional it means that it must have a lower bound cardinality of 0. Furthermore there needs to not exist an implies to the left of the set test expression in which the optional Clafer is present. The part that makes this analysis tricky is that all parents of the Clafer involved in the left side of the set test expression need to be analyzed (i.e. PinchDetectionFA is the parent of PositionSensor).
+%TODO: Not sure if I should have psuedocode here
+
+\subsection{Pattern 4 Implementation}
+Pattern 4 was implemented similiar to that of pattern 2. Like the last two patterns, the AST was traversed in order to retrieve the set of all constraints. Then like pattern 2, the visitor pattern was used to find a set test expression in which the right side was checked to see if it was a union expression like:
+\begin{lstlisting}[]
+[myComponents = (comp1 ++ comp2 ++ comp3)]
+\end{lstlisting}
+Then if the left side had a lower bound cardinality of 0 then a warning was generated because the empty set case was not taken into account. Algorithm~\ref{alg:pattern4} describes the high level approach for detecting the possible violations.
+%TODO: Provide pseudo code.
+\begin{algorithm}[H]
+\caption{Finding missing ``.ref" of Clafer in Constraints}\label{alg:pattern4}
+\begin{algorithmic}[1]
+\Procedure{findingMissingRefOfClafers}{}
+  \State \textbf{let} $C$ be the set of constraints with equality
+  \ForAll{$c \in C$}
+    \State $left \gets c.getLeftOfEqual()$
+    \State $right \gets c.getRightOfEqual()$
+    \If{$left.lowCard() == 0$}
+      \If{$right.isUnionExpr()$}
+        \State log error
+      \EndIf
+    \EndIf
+  \EndFor
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
 \section{Results \& Discussion}
+\begin{table*}[ht]
+\centering
+\caption{Evaluation of Number of Warnings Generated for 11 Realistic Clafer Models.}
+\label{tbl:warningGeneratedAndSize}
+\begin{tabular}{@{}l|cccccc@{}}
+\multicolumn{1}{c|}{\multirow{2}{*}{{\bf Model}}} & \multicolumn{2}{c}{{\bf Size}}   & \multicolumn{4}{c}{{\bf \# Warning's Generated}}                      \\ \cmidrule(l){2-7}
+\multicolumn{1}{c|}{}                             & {\it Clafers} & {\it Constraints} & {\it Pattern 1} & {\it Pattern 2} & {\it Pattern 3} & {\it Pattern 4} \\ \midrule
+{\it Power Window Thesis}                         & 107           & 154               & 0               & 0               & 0               & 0               \\ \midrule
+{\it Software Architecture - 1st draft}           & 33            & 25                & 0               & 2               & 0               & 0               \\ \midrule
+{\it Software Architecture - 2nd draft}           & 33            & 37                & 0               & 0               & 0               & 0               \\ \midrule
+{\it Data Center Resource Allocation - ISAP}      & 31            & 22                & 3               & 0               & 0               & 0               \\ \midrule
+{\it Data Center Resource Allocation - SSAP}      & 21            & 13                & 3               & 0               & 0               & 0               \\ \midrule
+{\it Data Center Resource Allocation - TSAP}      & 27            & 27                & 1               & 0               & 0               & 0               \\ \midrule
+{\it Data Center Resource Allocation - WSAP}      & 21            & 13                & 3               & 0               & 0               & 0               \\ \midrule
+{\it Power Window}                                & 136           & 152               & 4               & 0               & 0               & 0               \\ \midrule
+{\it Power Window Old}                            & 117           & 88                & 0               & 2               & 0               & 0               \\ \midrule
+{\it Wire Routing}                                & 83            & 77                & 4               & 0               & 0               & 0               \\ \midrule
+{\it Zeller Paper Model}                          & 106           & 186               & 1               & 0               & 0               & 0
+\end{tabular}
+\end{table*}
+
+The tool was first tested on a various number of test Clafer models written for the specific purpose of triggering each of the patterns and generated the correct errors. Once the test cases passed the tool was then evaluated on 11 realistic Clafer models developed by the author of this paper and previous grad student whom worked heavily on Clafer. The 11 models range in size and complexity as some were used in early courses while others are used in ongoing research and previous thesis work.
+
+This sample should not be taken to be a representative sample of Clafer users as the two modelers, while some models are taken from early, are still considered advanced users of Clafer. As the language develops it is the hope that this tool could be evaluated on new and more experienced users of Clafer in a larger setting.
+
+Even though the sample size was small and un-representative there were a few models that were provided some interesting results. First, the evaluation was carried out by first running the model given the tool and logging the number of errors generated by each of the patterns, as well as their model size. The results are shown in Table~\ref{tbl:warningGeneratedAndSize}.
+
+From the table it can be seen that no warnings were generated for patterns 3 and 4. A reason that this could be is that these are two patterns that can lead to a model generating zero instances. Thus, for most of these models (since they were somewhat final versions) they may have encountered this pattern but it was not present in the final version. This is where evaluating on a new user as they develop a model from scratch could be interesting as patterns 3 and 4 could aid in debugging the model.
+
+One interesting case that the evaluation did catch was the repair of a pattern 2 type warning from an earlier version of the \textit{Software Architecture} model to a later one. This provided some evidence that these patterns are detected manually by modelers and fixed as the model is developed.
+
+For the next step of the evaluation each of the warnings was investigated by the author to determine if it was a false positive or not. If it was a false positive it was further classified into whether it was a \textit{true} false positive or if it was an incorrect implementation of the tool algorithm. Table~\ref{lst:falsePositive} shows the results of this evaluation (Patterns 3 and 4 were not considered since no warnings were generated).
+
+\begin{table*}[h]
+\centering
+\caption{Evaluation of False Positives for Warnings Generated for Patterns 1 and 2 on 11 Realisitc Clafer Models.}
+\label{lst:falsePositive}
+\begin{tabular}{@{}l|llllll@{}}
+\multicolumn{1}{c|}{\multirow{2}{*}{{\bf Model}}} & \multicolumn{2}{c|}{{\bf \# Warning's Generated}}                         & \multicolumn{2}{c}{{\bf \# False Positives}}                              & \multicolumn{2}{c}{{\bf Classification of False Positives}}                                        \\ \cmidrule(l){2-7}
+\multicolumn{1}{c|}{}                             & \multicolumn{1}{c}{{\it Pattern 1}} & \multicolumn{1}{c}{{\it Pattern 2}} & \multicolumn{1}{c}{{\it Pattern 1}} & \multicolumn{1}{c}{{\it Pattern 2}} & \multicolumn{1}{c}{{\it Incorrect Implementation}} & \multicolumn{1}{c}{{\it True false positive}} \\ \midrule
+{\it Power Window Thesis}                         & 0                                   & 0                                   & 0                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Software Architecture - 1st draft}           & 0                                   & 2                                   & 0                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Software Architecture - 2nd draft}           & 0                                   & 0                                   & 0                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Data Center Resource Allocation - ISAP}      & 3                                   & 0                                   & 1                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Data Center Resource Allocation - SSAP}      & 3                                   & 0                                   & 1                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Data Center Resource Allocation - TSAP}      & 1                                   & 0                                   & 1                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Data Center Resource Allocation - WSAP}      & 3                                   & 0                                   & 1                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Power Window}                                & 4                                   & 0                                   & 0                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Power Window Old}                            & 0                                   & 2                                   & 0                                   & 0                                   & 0                                                  & 0                                             \\ \midrule
+{\it Wire Routing}                                & 4                                   & 0                                   & 3                                   & 0                                   & 3                                                  & 1                                             \\ \midrule
+{\it Zeller Paper Model}                          & 1                                   & 0                                   & 0                                   & 0                                   & 0                                                  & 0
+\end{tabular}
+\end{table*}
+
+As can be seen in the table there were 3 false positives that were classified as a incorrectness in the implementation of the pattern 1. The reason is that the constraint was nested in an unexpected Clafer. The algorithm thus would need to be adjusted to account for this case in future work.
+
 
 \medskip
 

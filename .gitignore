@@ -11,6 +11,7 @@
 *.run*
 *.synctex*
 *.pdf
+*.out
 
 # Clafer compiled files
 *.als
