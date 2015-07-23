@@ -29,7 +29,7 @@ citestyle=numeric
 
 \title{Applying Static Analysis Techniques to Aid Clafer Modelers}
 \author{Jordan A. Ross \\j25ross@uwaterloo.ca}
-\date{July 3rd, 2015}
+\date{July 28th, 2015}
 
 \begin{document}
 
@@ -174,7 +174,7 @@ common analysis was the analysis of types in a program and ensuring that a progr
 A program being type checked (or saying that a program is typeable) gives a guarentee that the program
 will behave properly at runtime \cite{2}.
 
-In the past decade or so though a lot offocus and work has been done in trying to detect the presence of bugs that traditional type system may not catch \cite{8}. This work has led to at least two successful and popular tools in industry, namely FindBugs and Coverity. Both tools are static analysis tools that perform some static analysis that does not necesarily provide a guarentee that the program will behave properly at runtime, but rather probable bugs that the developer(s) may have made. The following two subsections describe two of the prevelant techniques used in both Coverity and FindBugs and why they are effective. The last subsection describes both tools in more detail and comparison between the two.
+In the past decade or so though a lot of focus and work has been done in trying to detect the presence of bugs that traditional type system may not catch \cite{8}. This work has led to at least two successful and popular tools in industry, namely FindBugs and Coverity. Both tools are static analysis tools that perform some static analysis that does not necesarily provide a guarentee that the program will behave properly at runtime, but rather probable bugs that the developer(s) may have made. The following two subsections describe two of the prevelant techniques used in both Coverity and FindBugs and why they are effective. The last subsection describes both tools in more detail and comparison between the two.
 
 %TODO: I am thinking that we should combine the specification sections and then have a section on the static analysis techniques such as dataflow analysis and controlflow.
 \subsection{Specific Specifications}
@@ -188,7 +188,12 @@ In \cite{5} they also test their implementation on large open source projects su
 
 Overall MC is rather useful and succesful static analysis technique for finding real bugs in well-tested and frequently used software. It is curious though that some of the properties that the authors wanted to check had very good false positive rates while others, such as checking mutex's was very poor \cite{5}.
 
-Another approach of having specific specifications comes from the work of Hovemeyer and Pugh. In \cite{6} they propose to investigate simple static analysis techniques for finding bugs based on the notion of \textit{bug patterns}. These patterns are concrete specifications that should hold for the code that is analyzed. In the paper the authors highlight several of the patterns the check for with their tool FindBugs.
+Another approach of having specific specifications comes from the work of Hovemeyer and Pugh. In \cite{6} they propose to investigate simple static analysis techniques for finding bugs based on the notion of \textit{bug patterns}. These patterns are concrete specifications that should hold for the code that is analyzed. In the paper the authors highlight several of the patterns the check for with their tool FindBugs. One of the concrete examples of a bug that was found in build 13 of Sun's JDK 1.6 is infinite recursion \cite{8}. Consider the following as an example:
+\begin{lstlisting}[language=Java]
+public String foundType() {
+  return this.foundType();
+}
+\end{lstlisting}
 
 % Include some more about the FindBugs detectors and some of the simpler patterns they use.
 
@@ -215,7 +220,49 @@ The analysis performed in \cite{7} is different than that of MC in the fact that
 % See if we can find projects that they were both run on and provide some graphic
 % Provide a table given criteria where maybe they may differs
 % Reference the Coverity slides and the paper that compares the 2 for concurrency
+In this section we present some literature and studies that were found in comparing the two tools. Along with some of the data of the comparison, some thoughts are given to why the statistics could be the way they are. In a study by Al Mamun et. al. in \cite{11} they compared FindBugs, Coverity, Jlint, and Jtest. The benchmark programs that they used in their study were a set of benchmark programs introduced by Eythani et. al. The reader should refer to \cite{11} for the complete set of benchmark programs used. Table~\ref{tbl:concurrencyBugCompare} shows the results of the study with only the Coverity and FindBugs taken into consideration. Also, in the paper Al Mumun et. al. define a \textit{defect detection ratio} which is given in Equation~\ref{eq:defectDetecRatio}.
+\small
+\begin{equation}
+  \label{eq:defectDetecRatio}
+  Defect\ detection\ ratio = \frac{No.\ of\ defects\ detected\ by\ SA\ tool}{Total\ number\ of\ defects}
+\end{equation}
+\normalsize
 
+\begin{table*}[ht]
+\centering
+\caption{Comparison of Coverity and FindBugs using the results found in \cite{11} based on a set of benchmark concurrency programs.}
+\label{tbl:concurrencyBugCompare}
+\begin{tabular}{@{}lllcc@{}}
+\toprule
+\multicolumn{1}{c}{\multirow{2}{*}{{\bf Bug Category}}}                 & \multicolumn{1}{c}{\multirow{2}{*}{{\bf Bug Type}}} & \multirow{2}{*}{{\bf Total No. Bugs}} & \multicolumn{2}{c}{{\bf No. of Bugs Detected}} \\ \cmidrule(l){4-5}
+\multicolumn{1}{c}{}                                                    & \multicolumn{1}{c}{}                                &                                       & \multicolumn{1}{c|}{Coverity}    & FindBugs    \\ \midrule
+\multicolumn{1}{l|}{\multirow{4}{*}{Data Race and Atomicity violation}} & \multicolumn{1}{l|}{Wrong Lock/No Lock}             & \multicolumn{1}{l|}{5}                & \multicolumn{1}{c|}{3}           & 2           \\ \cmidrule(l){2-5}
+\multicolumn{1}{l|}{}                                                   & \multicolumn{1}{l|}{Double checked locking}         & \multicolumn{1}{l|}{1}                & \multicolumn{1}{c|}{0}           & 1           \\ \cmidrule(l){2-5}
+\multicolumn{1}{l|}{}                                                   & \multicolumn{1}{l|}{Condition for wait}             & \multicolumn{1}{l|}{1}                & \multicolumn{1}{c|}{0}           & 1           \\ \cmidrule(l){2-5}
+\multicolumn{1}{l|}{}                                                   & \multicolumn{1}{l|}{Use of deprecated methods}      & \multicolumn{1}{l|}{1}                & \multicolumn{1}{c|}{1}           & 0           \\ \midrule
+\multicolumn{1}{l|}{Deadlock}                                           & \multicolumn{1}{l|}{Notify instead of notifyAll}    & \multicolumn{1}{l|}{1}                & \multicolumn{1}{c|}{0}           & 1           \\ \midrule
+\multicolumn{2}{l|}{Total}                                                                                                    & \multicolumn{1}{l|}{9}                & \multicolumn{1}{c|}{4}           & 5           \\
+\multicolumn{3}{l}{Overall Defect detection ratio}                                                                                                                    & 0.444                            & 0.556       \\ \bottomrule
+\end{tabular}
+\end{table*}
+
+As well as the study discussed above, a comparsion from Coverity with FindBugs was also retreived in \cite{12}. In this presentation Coverity runs a comparison of Coverity with FindBugs on the Jenkins 1.496 core code on both tools with the latest version (in December 2012). Table~\ref{tbl:coverityCompare} shows the results of this comparison and it can be seen that Coverity out perfroms FindBugs in finding critical defects such as concurrency and unhandled exceptions. This corresponds to what was also seen in the study done by Al Mamun et. al. as well. However, FindBugs far surpasses Coverity in the finding of coding standard violations, best practice violations, etc. The reason for this could be that Coverity does a lot of inferring of specification as FindBugs is built on having a library of patterns that are matched against the Java byte code.
+
+\begin{table*}[ht]
+\centering
+\caption{Comparison of Coverity and FindBugs on Jenkins v1.496. The data belongs to Coverity}
+\label{tbl:coverityCompare}
+\begin{tabular}{@{}llll@{}}
+\toprule
+\multirow{2}{*}{}                                                  & \multicolumn{3}{c}{{\bf Defects Found}}        \\ \cmidrule(l){2-4}
+                                                                   & {\it Coverity} & {\it FindBugs} & {\it Shared} \\ \midrule
+\multicolumn{1}{l|}{{\it Unhandled Exceptions (incl. NULL deref)}} & 79             & 7              & 5            \\ \midrule
+\multicolumn{1}{l|}{{\it Resource Leaks}}                          & 86             & 12             & 13           \\ \midrule
+\multicolumn{1}{l|}{{\it Concurrency Problems}}                    & 22             & 10             & 9            \\ \midrule
+\multicolumn{1}{l|}{{\it Coding Standards, Best Practices, Other}} & 9              & 598            & 1            \\ \midrule
+{\it Total}                                                        & 196            & 627            & 28           \\ \bottomrule
+\end{tabular}
+\end{table*}
 
 \section{Static Analysis of Clafer}
 % This section should come directly from the possible patterns markdown document.
@@ -498,8 +545,6 @@ For the next step of the evaluation each of the warnings was investigated by the
 
 As can be seen in the table there were 3 false positives that were classified as a incorrectness in the implementation of the pattern 1. The reason is that the constraint was nested in an unexpected Clafer. The algorithm thus would need to be adjusted to account for this case in future work.
 
-
-\medskip
 
 \printbibliography
 

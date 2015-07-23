@@ -1,0 +1,79 @@
+// Pattern 1
+// abstract Location
+// abstract Edge
+//   location -> Location 2
+//   length ->> int
+
+// abstract HarnessEdge : Edge
+//   [length = 3]
+//   area ->> int
+
+// Harness
+//   l1 : Location
+//   l2 : Location
+//   l3 : Location
+
+//   e1 : HarnessEdge
+//     // [length = 1]
+//     [area = 2]
+//   e2 : HarnessEdge
+//     [location = (l2, l3)]
+//     [length = 1]
+//     [area = 3]
+
+// Pattern 2
+abstract FunctionalAnalysisComponent
+    deployedTo -> DeviceNode
+        [parent in this.deployedFrom.ref]
+
+abstract Command
+    sender -> FunctionalAnalysisComponent
+    receiver -> FunctionalAnalysisComponent
+    deployedTo ?
+    [(sender.deployedTo = receiver.deployedTo) <=> no this.deployedTo]
+
+abstract DeviceNode
+    deployedFrom -> FunctionalAnalysisComponent *
+        [this.deployedTo = parent]
+
+func1 : FunctionalAnalysisComponent
+func2 : FunctionalAnalysisComponent
+
+comm1 : Command
+    [sender = func1 && receiver = func1]
+
+dn1 : DeviceNode
+dn2 : DeviceNode
+
+// Pattern 3
+// abstract Feature
+// abstract AF
+//     cost -> integer
+
+// FeatureModel
+//     manualUpDown : Feature
+//     express : Feature ?
+//         expressUp : Feature ?
+
+// FunctionalAnalysisArchitecture
+//     PinchDetectionFA ?
+//         PositionSensor : AF
+//     currentSensor : AF
+//     controller : AF
+
+// [FunctionalAnalysisArchitecture.PinchDetectionFA.PositionSensor.cost + controller.cost + currentSensor.cost <= 10]
+
+// Pattern 4
+// abstract FunctionalAnalysisComponent
+//   deployedTo -> DeviceNode
+//     [parent in this.deployedFrom]
+
+// abstract DeviceNode
+//   deployedFrom -> FunctionalAnalysisComponent *
+//     [this.deployedTo = parent]
+
+// function1 : FunctionalAnalysisComponent
+//   [deployedTo = (device1, device2)]
+
+// device1 : DeviceNode
+// device2 : DeviceNode
