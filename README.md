@@ -14,7 +14,7 @@ This project is for the University of Waterloo ECE654 course project. The goal o
 The project can be built by doing the following:
 
 1. Clone the repository: `git clone https://github.com/ross2jd/ECE654_Project.git` 
-2. Traverse to the directory: `cd ECE654_Project` 
+2. Traverse to the directory: `cd ECE654_Project/Implementation` 
 3. Build the project using Maven: `$ mvn clean install` 
 
 # Usage
