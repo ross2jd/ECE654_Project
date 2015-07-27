@@ -18,7 +18,7 @@ The project can be built by doing the following:
 3. Build the project using Maven: `$ mvn clean install` 
 
 # Usage
-The .jar file that is outputed is located in the ECE654_Project/target/ directory. To run the program on a clafer file do the following:
+The .jar file that is outputed is located in the ECE654_Project/Implementation/target/directory. To run the program on a clafer file do the following:
 ```
 $ clafer -m choco <clafer file name>.cfr
 $ java -jar <jar file name>.jar <clafer file name>.js
